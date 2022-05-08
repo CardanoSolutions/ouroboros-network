@@ -164,11 +164,11 @@ lemma_cons_snoc_proof _ (SingCons _) = Refl
 type        MapSt :: ChainSync header  point  tip
                   -> ChainSync header' point' tip'
 type family MapSt st = r where
-  MapSt  StIdle                = StIdle
-  MapSt (StNext (StCanAwait))  = StNext (StCanAwait)
-  MapSt (StNext (StMustReply)) = StNext (StMustReply)
-  MapSt  StIntersect           = StIntersect
-  MapSt  StDone                = StDone
+  MapSt  StIdle              = StIdle
+  MapSt (StNext StCanAwait)  = StNext (StCanAwait)
+  MapSt (StNext StMustReply) = StNext (StMustReply)
+  MapSt  StIntersect         = StIntersect
+  MapSt  StDone              = StDone
 
 type        MapTr :: Trans (ChainSync header  point  tip)
                   -> Trans (ChainSync header' point' tip')
