@@ -46,10 +46,13 @@ import           Control.Tracer as Trace (nullTracer)
 
 data ForgeState =
   ForgeState {
-    counter     :: !Int
-  , currentSlot :: !SlotNo
+    currentSlot :: !SlotNo
   , forged      :: !Int
   }
+
+forgingDone :: ForgeOptions -> ForgeState -> Bool
+forgingDone (ForgeLimitSlot s)  = (== s) . currentSlot
+forgingDone (ForgeLimitBlock b) = (== b) . forged
 
 -- just a shim; we don't need to lift into WithEarlyExit monad
 lift :: a -> a
@@ -63,16 +66,16 @@ runForge
     -> [BlockForging IO blk]
     -> TopLevelConfig blk
     -> IO ()
-runForge ForgeOptions{..} chainDB blockForging cfg = do
-    putStrLn $ "--> will process " ++ show foptSlotCount ++ " slots"
-    ForgeState{forged} <- go $ ForgeState foptSlotCount 0 0
-    putStrLn $ "--> forged and adopted a block in " ++ show forged ++ " slots"
+runForge opts chainDB blockForging cfg = do
+    putStrLn $ "--> will process until: " ++ show opts
+    ForgeState{..} <- go $ ForgeState 0 0
+    putStrLn $ "--> forged and adopted " ++ show forged ++ " blocks; reached " ++ show currentSlot
   where
     go :: ForgeState -> IO ForgeState
     go forgeState@ForgeState{..}
-      | counter == 0 = pure forgeState
+      | forgingDone opts forgeState = pure forgeState
       | otherwise =
-        let forgeState' = forgeState {counter = counter - 1, currentSlot = succ currentSlot}
+        let forgeState' = forgeState {currentSlot = currentSlot + 1}
         in try (goSlot currentSlot) >>= \case
           Left SomeException{} -> go forgeState'
           _                    -> go forgeState' {forged = forged + 1}

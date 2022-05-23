@@ -7,7 +7,9 @@ module Configuration.Parsers (
   , parserCommandLine
   ) where
 
+
 import           Options.Applicative
+import           Ouroboros.Consensus.Block.Abstract (SlotNo (..))
 
 
 data NodeFilePaths =
@@ -26,10 +28,9 @@ data NodeCredentials =
     }
     deriving Show
 
-newtype ForgeOptions =
-    ForgeOptions {
-      foptSlotCount :: Int
-    }
+data ForgeOptions =
+    ForgeLimitBlock !Int
+  | ForgeLimitSlot  !SlotNo
     deriving Show
 
 
@@ -56,8 +57,8 @@ parseNodeCredentials =
 
 parseForgeOptions :: Parser ForgeOptions
 parseForgeOptions =
-  ForgeOptions
-    <$> parseSlotCount
+      ForgeLimitSlot <$> parseSlotLimit
+  <|> ForgeLimitBlock <$> parseBlockLimit
 
 parseChainDBFilePath :: Parser FilePath
 parseChainDBFilePath =
@@ -113,12 +114,20 @@ parseBulkFilePath =
         <> completer (bashCompleter "file")
     )
 
-parseSlotCount :: Parser Int
-parseSlotCount =
-  option auto
+parseSlotLimit :: Parser SlotNo
+parseSlotLimit =
+  SlotNo <$> option auto
     (     short 's'
        <> long "slots"
        <> metavar "NUMBER"
        <> help "Amount of slots to process"
-       <> value 8192        -- arbitrary default number
+    )
+
+parseBlockLimit :: Parser Int
+parseBlockLimit =
+  option auto
+    (     short 'b'
+       <> long "blocks"
+       <> metavar "NUMBER"
+       <> help "Amount of blocks to forge"
     )
