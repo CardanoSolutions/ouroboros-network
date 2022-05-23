@@ -189,3 +189,7 @@ executable db-synthesizer
                        -Widentities
                        -Wredundant-constraints
                        -Wmissing-export-lists
+                       -O2
+                       -threaded
+                       -rtsopts
+                       "-with-rtsopts=-N -I0 -A16m"
