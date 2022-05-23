@@ -78,13 +78,12 @@ main = do
         let creds = ProtocolFilepaths {
               byronCertFile         = Nothing
             , byronKeyFile          = Nothing
-            , shelleyKESFile        = Just credKESFile
-            , shelleyVRFFile        = Just credVRFFile
-            , shelleyCertFile       = Just credCertFile
-            , shelleyBulkCredsFile  = Nothing
+            , shelleyKESFile        = credKESFile
+            , shelleyVRFFile        = credVRFFile
+            , shelleyCertFile       = credCertFile
+            , shelleyBulkCredsFile  = credBulkFile
             }
         pure $ AppEnv conf forgeOptions creds nfpChainDB
-
 
     appEnv@AppEnv{..} <- either die pure appEnv_
 
@@ -148,7 +147,7 @@ synthesize AppEnv{..} (SomeConsensusProtocol _ runP) =
             putStrLn "--> clearing ChainDB on file system"
             clearChainDB envDbDir
             ChainDB.withDB dbArgs $ \chainDB ->
-                runForge envForgeOptions chainDB (head forgers) pInfoConfig
+                runForge envForgeOptions chainDB forgers pInfoConfig
         putStrLn "--> done"
   where
     ProtocolInfo

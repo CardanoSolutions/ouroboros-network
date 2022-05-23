@@ -19,9 +19,10 @@ data NodeFilePaths =
 
 data NodeCredentials =
     NodeCredentials {
-        credCertFile :: !FilePath
-      , credVRFFile  :: !FilePath
-      , credKESFile  :: !FilePath
+        credCertFile :: !(Maybe FilePath)
+      , credVRFFile  :: !(Maybe FilePath)
+      , credKESFile  :: !(Maybe FilePath)
+      , credBulkFile :: !(Maybe FilePath)
     }
     deriving Show
 
@@ -48,9 +49,10 @@ parseNodeFilePaths =
 parseNodeCredentials :: Parser NodeCredentials
 parseNodeCredentials =
   NodeCredentials
-    <$> parseOperationalCertFilePath
-    <*> parseVrfKeyFilePath
-    <*> parseKesKeyFilePath
+    <$> optional parseOperationalCertFilePath
+    <*> optional parseVrfKeyFilePath
+    <*> optional parseKesKeyFilePath
+    <*> optional parseBulkFilePath
 
 parseForgeOptions :: Parser ForgeOptions
 parseForgeOptions =
@@ -99,6 +101,15 @@ parseVrfKeyFilePath =
     ( long "shelley-vrf-key"
         <> metavar "FILE"
         <> help "Path to the VRF signing key"
+        <> completer (bashCompleter "file")
+    )
+
+parseBulkFilePath :: Parser FilePath
+parseBulkFilePath =
+  strOption
+    ( long "bulk-credentials-file"
+        <> metavar "FILE"
+        <> help "Path to the bulk credentials file"
         <> completer (bashCompleter "file")
     )
 

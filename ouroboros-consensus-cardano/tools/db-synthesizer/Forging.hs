@@ -60,7 +60,7 @@ runForge
     ( LedgerSupportsProtocol blk )
     => ForgeOptions
     -> ChainDB IO blk
-    -> BlockForging IO blk
+    -> [BlockForging IO blk]
     -> TopLevelConfig blk
     -> IO ()
 runForge ForgeOptions{..} chainDB blockForging cfg = do
@@ -148,7 +148,7 @@ runForge ForgeOptions{..} chainDB blockForging cfg = do
                   ledgerView
                   currentSlot
                   (headerStateChainDep (headerState unticked))
-
+        {-
         -- Check if we are the leader
         proof <- do
           shouldForge <- lift $
@@ -167,6 +167,18 @@ runForge ForgeOptions{..} chainDB blockForging cfg = do
             NotLeader ->
               exitEarly' "NotLeader"
             ShouldForge p -> return p
+        -}
+
+        -- check if any forger is slot leader
+        let
+            checkShouldForge' f =
+              checkShouldForge f nullTracer cfg currentSlot tickedChainDepState
+
+        checks <- zip blockForging <$> mapM checkShouldForge' blockForging
+
+        (blockForging', proof) <- case [(f, p) | (f, ShouldForge p) <- checks] of
+          x:_ -> pure x
+          _   -> exitEarly' "NoLeader"
 
         -- At this point we have established that we are indeed slot leader
         -- trace $ TraceNodeIsLeader currentSlot
@@ -200,7 +212,7 @@ runForge ForgeOptions{..} chainDB blockForging cfg = do
 
         -- Actually produce the block
         newBlock <- lift $
-          Block.forgeBlock blockForging
+          Block.forgeBlock blockForging' -- blockForging
             cfg
             bcBlockNo
             currentSlot

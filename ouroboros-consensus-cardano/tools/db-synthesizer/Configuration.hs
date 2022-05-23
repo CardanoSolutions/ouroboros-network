@@ -49,15 +49,6 @@ instance FromJSON NodeConfigStub where
             <*> v .: "ShelleyGenesisFile"
             <*> v .: "ByronGenesisFile"
 
-{-
-instance FromJSON NodeCredentials where
-    parseJSON = withObject "NodeCredentials" $ \v ->
-        NodeCredentials
-          <$> v .: "operationalCertificate"
-          <*> v .: "vrfKey"
-          <*> v .: "kesKey"
--}
-
 instance AdjustFilePaths NodeConfigStub where
     adjustFilePaths f nc@NodeConfigStub{..} =
         nc {
@@ -66,13 +57,22 @@ instance AdjustFilePaths NodeConfigStub where
           , ncsByronGenesisFile     = f ncsByronGenesisFile
           }
 
+{-
+instance FromJSON NodeCredentials where
+    parseJSON = withObject "NodeCredentials" $ \v ->
+        NodeCredentials
+          <$> v .: "operationalCertificate"
+          <*> v .: "vrfKey"
+          <*> v .: "kesKey"
+
 instance AdjustFilePaths NodeCredentials where
     adjustFilePaths f nc@NodeCredentials{..} =
         nc {
-            credCertFile  = f credCertFile
-          , credVRFFile   = f credVRFFile
-          , credKESFile   = f credKESFile
+            credCertFile  = f <$> credCertFile
+          , credVRFFile   = f <$> credVRFFile
+          , credKESFile   = f <$> credKESFile
           }
+-}
 
 -- DUPLICATE: mirroring parsers from cardano-node/src/Cardano/Node/Configuration/POM.hs
 
