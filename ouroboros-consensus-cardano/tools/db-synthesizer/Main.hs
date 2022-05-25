@@ -125,7 +125,7 @@ synthesize AppEnv{..} (SomeConsensusProtocol _ runP) =
             epochSize   = sgEpochLength envShelleyGenesis
             chunkInfo   = Node.nodeImmutableDbChunkInfo (configStorage pInfoConfig)
             k           = configSecurityParam pInfoConfig
-            diskPolicy  = defaultDiskPolicy k DefaultSnapshotInterval           -- TODO try without snapshots / make configurable
+            diskPolicy  = defaultDiskPolicy k DefaultSnapshotInterval
             dbArgs      = Node.mkChainDbArgs
                 registry InFuture.dontCheck pInfoConfig pInfoInitLedger chunkInfo $
                     ChainDB.defaultArgs (Node.stdMkChainDbHasFS envDbDir) diskPolicy
@@ -145,7 +145,6 @@ synthesize AppEnv{..} (SomeConsensusProtocol _ runP) =
         , pInfoBlockForging
         , pInfoInitLedger
         } = protocolInfo runP
-
 
 -- may throw exceptions
 clearChainDB :: FilePath -> IO ()

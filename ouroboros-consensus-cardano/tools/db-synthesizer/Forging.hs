@@ -69,7 +69,7 @@ runForge
     -> TopLevelConfig blk
     -> IO ()
 runForge epochSize_ opts chainDB blockForging cfg = do
-    putStrLn $ "--> epoch size: " ++ show epochSize
+    putStrLn $ "--> epoch size: " ++ show epochSize_
     putStrLn $ "--> will process until: " ++ show opts
     ForgeState{..} <- go $ ForgeState 0 0 0
     putStrLn $ "--> forged and adopted " ++ show forged ++ " blocks; reached " ++ show currentSlot
@@ -83,7 +83,7 @@ runForge epochSize_ opts chainDB blockForging cfg = do
         let
             currentSlot'  = currentSlot + 1
             currentEpoch'
-              | epochSize `rem` unSlotNo currentSlot' == 0  = currentEpoch + 1
+              | unSlotNo currentSlot' `rem` epochSize == 0  = currentEpoch + 1
               | otherwise                                   = currentEpoch
             forgeState'   = forgeState {currentSlot = currentSlot', currentEpoch = currentEpoch'}
         in runExceptT (goSlot currentSlot) >>= \case
