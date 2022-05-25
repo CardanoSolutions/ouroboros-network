@@ -7,6 +7,7 @@ module Configuration.Parsers (
   , parserCommandLine
   ) where
 
+import           Data.Word (Word64)
 
 import           Options.Applicative
 import           Ouroboros.Consensus.Block.Abstract (SlotNo (..))
@@ -29,8 +30,9 @@ data NodeCredentials =
     deriving Show
 
 data ForgeOptions =
-    ForgeLimitBlock !Int
+    ForgeLimitBlock !Word64
   | ForgeLimitSlot  !SlotNo
+  | ForgeLimitEpoch !Word64
     deriving Show
 
 
@@ -59,6 +61,7 @@ parseForgeOptions :: Parser ForgeOptions
 parseForgeOptions =
       ForgeLimitSlot <$> parseSlotLimit
   <|> ForgeLimitBlock <$> parseBlockLimit
+  <|> ForgeLimitEpoch <$> parseEpochLimit
 
 parseChainDBFilePath :: Parser FilePath
 parseChainDBFilePath =
@@ -123,11 +126,20 @@ parseSlotLimit =
        <> help "Amount of slots to process"
     )
 
-parseBlockLimit :: Parser Int
+parseBlockLimit :: Parser Word64
 parseBlockLimit =
   option auto
     (     short 'b'
        <> long "blocks"
        <> metavar "NUMBER"
        <> help "Amount of blocks to forge"
+    )
+
+parseEpochLimit :: Parser Word64
+parseEpochLimit =
+  option auto
+    (     short 'e'
+       <> long "epochs"
+       <> metavar "NUMBER"
+       <> help "Amount of epochs to process"
     )

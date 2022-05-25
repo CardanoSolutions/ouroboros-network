@@ -15,10 +15,8 @@ import           Cardano.Api.Any (displayError)
 import           Cardano.Api.Protocol.Types (protocolInfo)
 import           Cardano.Node.Types
 
--- import           Cardano.Ledger.Alonzo.Genesis (AlonzoGenesis)
--- import           Ouroboros.Consensus.Shelley.Eras (StandardShelley)
--- import           Ouroboros.Consensus.Shelley.Ledger.Block (ShelleyBlock)
--- import           Ouroboros.Consensus.Shelley.Node (ShelleyGenesis, validateGenesis)
+import           Ouroboros.Consensus.Shelley.Eras (StandardShelley)
+import           Ouroboros.Consensus.Shelley.Node (ShelleyGenesis (..))
 
 import           Ouroboros.Consensus.Config (configSecurityParam, configStorage)
 import           Ouroboros.Consensus.Node.ProtocolInfo (ProtocolInfo (..))
@@ -36,7 +34,7 @@ import           Ouroboros.Consensus.Storage.LedgerDB.DiskPolicy
 import           Ouroboros.Consensus.Util.ResourceRegistry
 
 import           Data.Aeson as Aeson (FromJSON, Result (..), Value,
-                     eitherDecodeStrict', fromJSON)
+                     eitherDecodeFileStrict', eitherDecodeStrict', fromJSON)
 import           Data.ByteString as BS (ByteString, readFile)
 
 import           Control.Monad.Trans.Except (ExceptT)
@@ -57,8 +55,7 @@ data AppEnv =
          envConfigStub          :: NodeConfigStub
        , envForgeOptions        :: ForgeOptions
        , envProtocolCredentials :: ProtocolFilepaths
-       -- , envAlonzoGenesis       :: AlonzoGenesis
-       -- , envShelleyGenesis      :: ShelleyGenesis StandardShelley
+       , envShelleyGenesis      :: ShelleyGenesis StandardShelley
        , envDbDir               :: FilePath
      }
 
@@ -72,8 +69,7 @@ main = do
     appEnv_ <- runExceptT $ do
         inp  <- handleIOExceptT show (BS.readFile nfpConfig)
         conf <- adjustFilePaths relativeToConfig <$> readJson inp
-        -- alon <- readFileJson $ ncsAlonzoGenesisFile conf
-        -- shel <- readFileJson $ ncsShelleyGenesisFile conf
+        shel <- readFileJson $ ncsShelleyGenesisFile conf
         -- _ <- hoistEither $ validateGenesis shel
         let creds = ProtocolFilepaths {
               byronCertFile         = Nothing
@@ -83,16 +79,12 @@ main = do
             , shelleyCertFile       = credCertFile
             , shelleyBulkCredsFile  = credBulkFile
             }
-        pure $ AppEnv conf forgeOptions creds nfpChainDB
+        pure $ AppEnv conf forgeOptions creds shel nfpChainDB
 
     appEnv@AppEnv{..} <- either die pure appEnv_
 
     putStrLn "--> forger credentials:"
     print envProtocolCredentials
-    -- putStrLn "----- AlonzoGenesis -----"
-    -- print envAlonzoGenesis
-    -- putStrLn "----- ShelleyGenesis -----"
-    -- print envShelleyGenesis
 
     let
         shelleyConfig   = NodeShelleyProtocolConfiguration (GenesisFile $ ncsShelleyGenesisFile envConfigStub) Nothing
@@ -118,21 +110,19 @@ main = do
 readJson :: (Monad m, FromJSON a) => ByteString -> ExceptT String m a
 readJson = hoistEither . eitherDecodeStrict'
 
-{-
 readFileJson :: FromJSON a => FilePath -> ExceptT String IO a
 readFileJson f = handleIOExceptT show (eitherDecodeFileStrict' f) >>= hoistEither
--}
 
 eitherParseJson :: FromJSON a => Aeson.Value -> Either String a
 eitherParseJson v = case fromJSON v of
     Error err -> Left err
     Success a -> Right a
 
-
 synthesize :: AppEnv -> SomeConsensusProtocol -> IO ()
 synthesize AppEnv{..} (SomeConsensusProtocol _ runP) =
     withRegistry $ \registry -> do
         let
+            epochSize   = sgEpochLength envShelleyGenesis
             chunkInfo   = Node.nodeImmutableDbChunkInfo (configStorage pInfoConfig)
             k           = configSecurityParam pInfoConfig
             diskPolicy  = defaultDiskPolicy k DefaultSnapshotInterval           -- TODO try without snapshots / make configurable
@@ -147,7 +137,7 @@ synthesize AppEnv{..} (SomeConsensusProtocol _ runP) =
             putStrLn "--> clearing ChainDB on file system"
             clearChainDB envDbDir
             ChainDB.withDB dbArgs $ \chainDB ->
-                runForge envForgeOptions chainDB forgers pInfoConfig
+                runForge epochSize envForgeOptions chainDB forgers pInfoConfig
         putStrLn "--> done"
   where
     ProtocolInfo

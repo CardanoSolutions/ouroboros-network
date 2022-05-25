@@ -10,11 +10,13 @@ module Forging (runForge) where
 
 import           Configuration (ForgeOptions (..))
 
-import           Control.Exception
 import           Control.Monad (when)
 import           Control.Monad.Except (runExcept)
+import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
 import           Data.Maybe (isJust)
 import           Data.Proxy
+import           Data.Word (Word64)
 
 import           Ouroboros.Consensus.Block.Abstract as Block
 import           Ouroboros.Consensus.Block.Forging as Block (BlockForging (..),
@@ -46,43 +48,53 @@ import           Control.Tracer as Trace (nullTracer)
 
 data ForgeState =
   ForgeState {
-    currentSlot :: !SlotNo
-  , forged      :: !Int
+    currentSlot  :: !SlotNo
+  , forged       :: !Word64
+  , currentEpoch :: !Word64
   }
 
 forgingDone :: ForgeOptions -> ForgeState -> Bool
 forgingDone (ForgeLimitSlot s)  = (== s) . currentSlot
 forgingDone (ForgeLimitBlock b) = (== b) . forged
-
--- just a shim; we don't need to lift into WithEarlyExit monad
-lift :: a -> a
-lift = id
+forgingDone (ForgeLimitEpoch e) = (== e) . currentEpoch
+{-# INLINE forgingDone #-}
 
 runForge
   :: forall blk.
     ( LedgerSupportsProtocol blk )
-    => ForgeOptions
+    => EpochSize
+    -> ForgeOptions
     -> ChainDB IO blk
     -> [BlockForging IO blk]
     -> TopLevelConfig blk
     -> IO ()
-runForge opts chainDB blockForging cfg = do
+runForge epochSize_ opts chainDB blockForging cfg = do
+    putStrLn $ "--> epoch size: " ++ show epochSize
     putStrLn $ "--> will process until: " ++ show opts
-    ForgeState{..} <- go $ ForgeState 0 0
+    ForgeState{..} <- go $ ForgeState 0 0 0
     putStrLn $ "--> forged and adopted " ++ show forged ++ " blocks; reached " ++ show currentSlot
   where
+    epochSize = unEpochSize epochSize_
+
     go :: ForgeState -> IO ForgeState
     go forgeState@ForgeState{..}
       | forgingDone opts forgeState = pure forgeState
       | otherwise =
-        let forgeState' = forgeState {currentSlot = currentSlot + 1}
-        in try (goSlot currentSlot) >>= \case
-          Left SomeException{} -> go forgeState'
-          _                    -> go forgeState' {forged = forged + 1}
+        let
+            currentSlot'  = currentSlot + 1
+            currentEpoch'
+              | epochSize `rem` unSlotNo currentSlot' == 0  = currentEpoch + 1
+              | otherwise                                   = currentEpoch
+            forgeState'   = forgeState {currentSlot = currentSlot', currentEpoch = currentEpoch'}
+        in runExceptT (goSlot currentSlot) >>= \case
+            Left{}  -> go forgeState'
+            Right{} -> go forgeState' {forged = forged + 1}
 
-    exitEarly' = fail
+    -- just some shims; we don't need to lift into WithEarlyExit monad
+    exitEarly'  = throwE
+    lift        = liftIO
 
-    goSlot :: SlotNo -> IO ()
+    goSlot :: SlotNo -> ExceptT String IO ()
     goSlot currentSlot = do
         -- trace $ TraceStartLeadershipCheck currentSlot
 
@@ -177,7 +189,7 @@ runForge opts chainDB blockForging cfg = do
             checkShouldForge' f =
               checkShouldForge f nullTracer cfg currentSlot tickedChainDepState
 
-        checks <- zip blockForging <$> mapM checkShouldForge' blockForging
+        checks <- zip blockForging <$> liftIO (mapM checkShouldForge' blockForging)
 
         (blockForging', proof) <- case [(f, p) | (f, ShouldForge p) <- checks] of
           x:_ -> pure x
@@ -269,10 +281,6 @@ runForge opts chainDB blockForging cfg = do
         -- block, i.e., the @HasTxs@ class, is not implementable by all blocks,
         -- e.g., @DualBlock@.
         -- trace $ TraceAdoptedBlock currentSlot newBlock txs
-
-        -- putStrLn $ "forged and adopted a block in: " ++ show currentSlot
-
-
 {-
     trace :: TraceForgeEvent blk -> WithEarlyExit m ()
     trace =
