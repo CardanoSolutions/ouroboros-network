@@ -24,6 +24,7 @@ import           Data.Set (Set)
 import qualified Data.Set as Set
 import           Data.Time (secondsToDiffTime)
 import           Data.Void (Void)
+import           Data.Word (Word32)
 
 import           GHC.Exception.Type (SomeException)
 import           System.Random (mkStdGen)
@@ -683,55 +684,76 @@ prop_diffusion_dns_can_recover defaultBearerInfo diffScript =
     ttlForDnsError DNS.NameError _ = 10800
     ttlForDnsError _           ttl = clipTTLAbove (ttl * 2 + 5)
 
+    ttlForResults :: [DNS.TTL] -> DiffTime
+    -- This case says we have a successful reply but there is no answer.
+    -- This covers for example non-existent TLDs since there is no authority
+    -- to say that they should not exist.
+    ttlForResults []   = ttlForDnsError DNS.NameError 0
+    ttlForResults ttls = clipTTLBelow
+                       . clipTTLAbove
+                       . (fromIntegral :: Word32 -> DiffTime)
+                       $ maximum ttls
+
     -- | Limit insane TTL choices.
     clipTTLAbove :: DiffTime -> DiffTime
     clipTTLAbove = min 86400  -- and 24hrs
 
+    clipTTLBelow :: DiffTime -> DiffTime
+    clipTTLBelow = max 60  -- and 1 min
+
     verify_dns_can_recover :: Events DiffusionTestTrace -> Property
     verify_dns_can_recover events =
         counterexample (show events)
-      $ verify Map.empty 0 (Time 0) (Signal.eventsToList events)
+      $ verify Map.empty 0 0 (Time 0) (Signal.eventsToList events)
 
     verify :: Map DNS.Domain Time
+           -> DiffTime
            -> Int
            -> Time
            -> [(Time, DiffusionTestTrace)]
            -> Property
-    verify toRecover recovered time [] =
+    verify toRecover ttl recovered time [] =
       counterexample (show toRecover ++ " none of these DNS names recovered\n"
                      ++ "Final time: " ++ show time ++ "\n"
+                     ++ "TTL time: " ++ show ttl ++ "\n"
                      ++ "Number of recovered: " ++ show recovered )
                      (all (>= time) toRecover || recovered > 0)
-    verify toRecover recovered time ((t, ev):evs) =
+    verify toRecover ttl recovered time ((t, ev):evs) =
       case ev of
         DiffusionLocalRootPeerTrace
           (TraceLocalRootFailure dap (DNSError err)) ->
-            let ttl = ttlForDnsError err 0
+            let ttl' = ttlForDnsError err ttl
                 dns = dapDomain dap
-             in verify (Map.insert dns (addTime ttl t) toRecover)
+             in verify (Map.insert dns (addTime ttl' t) toRecover)
+                        ttl'
                         recovered t evs
         DiffusionPublicRootPeerTrace (TracePublicRootFailure dns err) ->
-            let ttl = ttlForDnsError err 0
-             in verify (Map.insert dns (addTime ttl t) toRecover)
+            let ttl' = ttlForDnsError err ttl
+             in verify (Map.insert dns (addTime ttl' t) toRecover)
+                        ttl'
                         recovered t evs
-        DiffusionLocalRootPeerTrace (TraceLocalRootResult dap _) ->
+        DiffusionLocalRootPeerTrace (TraceLocalRootResult dap r) ->
           let dns = dapDomain dap
+              ttls = map snd r
            in case Map.lookup dns toRecover of
-                Nothing -> verify toRecover recovered t evs
+                Nothing -> verify toRecover (ttlForResults ttls) recovered t evs
                 Just _  -> verify (Map.delete dns toRecover)
+                                  (ttlForResults ttls)
                                   (recovered + 1)
                                   t
                                   evs
-        DiffusionPublicRootPeerTrace (TracePublicRootResult dns _) ->
-           case Map.lookup dns toRecover of
-             Nothing -> verify toRecover recovered t evs
-             Just _  -> verify (Map.delete dns toRecover)
-                               (recovered + 1)
-                               t
-                               evs
+        DiffusionPublicRootPeerTrace (TracePublicRootResult dns r) ->
+          let ttls = map snd r
+           in case Map.lookup dns toRecover of
+                Nothing -> verify toRecover (ttlForResults ttls) recovered t evs
+                Just _  -> verify (Map.delete dns toRecover)
+                                  (ttlForResults ttls)
+                                  (recovered + 1)
+                                  t
+                                  evs
         DiffusionDiffusionSimulationTrace TrReconfigurionNode ->
-          verify Map.empty recovered t evs
-        _ -> verify toRecover recovered time evs
+          verify Map.empty ttl recovered t evs
+        _ -> verify toRecover ttl recovered time evs
 
 -- | A variant of
 -- 'Test.Ouroboros.Network.PeerSelection.prop_governor_target_established_public'
