@@ -18,7 +18,7 @@ packages: ./ouroboros-network-testing
           ./ouroboros-consensus-shelley
           ./ouroboros-consensus-shelley-test
           ./ouroboros-consensus-test
-          -- ./ouroboros-consensus-cardano-tools/db-synthesizer
+          ./ouroboros-consensus-cardano-tools/db-synthesizer
           ./ntp-client
           ./cardano-client
 
