@@ -1,40 +1,20 @@
 
+module DBSynthesizer.Parsers (parseCommandLine) where
 
-module Configuration.Parsers (
-    ForgeOptions (..)
-  , NodeCredentials (..)
-  , NodeFilePaths (..)
-  , parserCommandLine
-  ) where
+import           Cardano.Tools.DBSynthesizer.Types
 
-import           Data.Word (Word64)
-
-import           Options.Applicative
 import           Ouroboros.Consensus.Block.Abstract (SlotNo (..))
 
+import           Data.Word (Word64)
+import           Options.Applicative as Opt
 
-data NodeFilePaths =
-    NodeFilePaths {
-        nfpConfig  :: !FilePath
-      , nfpChainDB :: !FilePath
-    }
-    deriving Show
 
-data NodeCredentials =
-    NodeCredentials {
-        credCertFile :: !(Maybe FilePath)
-      , credVRFFile  :: !(Maybe FilePath)
-      , credKESFile  :: !(Maybe FilePath)
-      , credBulkFile :: !(Maybe FilePath)
-    }
-    deriving Show
-
-data ForgeOptions =
-    ForgeLimitBlock !Word64
-  | ForgeLimitSlot  !SlotNo
-  | ForgeLimitEpoch !Word64
-    deriving Show
-
+parseCommandLine :: IO (NodeFilePaths, NodeCredentials, ForgeOptions)
+parseCommandLine =
+    Opt.customExecParser p opts
+  where
+    p     = Opt.prefs Opt.showHelpOnEmpty
+    opts  = Opt.info parserCommandLine mempty
 
 parserCommandLine :: Parser (NodeFilePaths, NodeCredentials, ForgeOptions)
 parserCommandLine =

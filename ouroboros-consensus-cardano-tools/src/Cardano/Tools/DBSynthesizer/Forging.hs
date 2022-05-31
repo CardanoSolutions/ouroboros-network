@@ -6,9 +6,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
 
-module Forging (runForge) where
+module Cardano.Tools.DBSynthesizer.Forging (runForge) where
 
-import           Configuration (ForgeOptions (..))
+import           Cardano.Tools.DBSynthesizer.Types (ForgeOptions (..))
 
 import           Control.Monad (when)
 import           Control.Monad.Except (runExcept)

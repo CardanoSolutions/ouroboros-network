@@ -24,15 +24,14 @@ flag asserts
 library
   hs-source-dirs:      src
 
-  exposed-modules:     Configuration
-                     , Configuration.Parsers
-                     , Forging
-
-                     , Cardano.Api.Any
+  exposed-modules:     Cardano.Api.Any
                      , Cardano.Api.Protocol.Types
                      , Cardano.Node.Protocol.Types
                      , Cardano.Node.Types
                      , Cardano.Node.Protocol
+                     , Cardano.Tools.DBSynthesizer.Forging
+                     , Cardano.Tools.DBSynthesizer.Orphans
+                     , Cardano.Tools.DBSynthesizer.Types
 
   build-depends:       base
                      , aeson
@@ -45,7 +44,6 @@ library
                      , filepath
                      , mtl
                      , nothunks
-                     , optparse-applicative
                      , text
                      , transformers
                      , transformers-except
@@ -138,9 +136,10 @@ executable db-synthesizer
                      , ouroboros-consensus-shelley
                      , ouroboros-network
 
-  
-  ghc-options:         -Wall
-                       -O2
-                       -threaded
-                       -rtsopts
-                       "-with-rtsopts=-N -I0 -A16m"
+  other-modules:     DBSynthesizer.Parsers
+
+  ghc-options:       -Wall
+                     -O2
+                     -threaded
+                     -rtsopts
+                     "-with-rtsopts=-N -I0 -A16m"

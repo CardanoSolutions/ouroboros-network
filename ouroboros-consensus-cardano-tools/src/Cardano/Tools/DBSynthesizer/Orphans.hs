@@ -4,38 +4,21 @@
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Configuration (
-    module Conf
-  , NodeConfigStub (..)
-  , parseCommandLine
-  ) where
-
-
-import           Configuration.Parsers as Conf hiding (parserCommandLine)
-import qualified Configuration.Parsers as CONF (parserCommandLine)
+module Cardano.Tools.DBSynthesizer.Orphans () where
 
 import           Cardano.Node.Types (AdjustFilePaths (..),
                      NodeByronProtocolConfiguration (..),
                      NodeHardForkProtocolConfiguration (..))
+import           Cardano.Tools.DBSynthesizer.Types
 
 import qualified Cardano.Chain.Update as Byron (ApplicationName (..))
 import           Cardano.Crypto (RequiresNetworkMagic (..))
 
-import           Data.Aeson as Aeson (FromJSON (..), Value, withObject, (.!=),
-                     (.:), (.:?))
+import           Data.Aeson as Aeson (FromJSON (..), withObject, (.!=), (.:),
+                     (.:?))
 
 import           Control.Monad (when)
-import           Options.Applicative as Opt
 
-
-data NodeConfigStub =
-    NodeConfigStub {
-        ncsNodeConfig         :: !Aeson.Value
-      , ncsAlonzoGenesisFile  :: !FilePath
-      , ncsShelleyGenesisFile :: !FilePath
-      , ncsByronGenesisFile   :: !FilePath
-    }
-    deriving Show
 
 instance FromJSON NodeConfigStub where
     parseJSON val = withObject "NodeConfigStub" (parse' val) val
@@ -111,9 +94,3 @@ instance FromJSON NodeByronProtocolConfiguration where
           <*> v .: "LastKnownBlockVersion-Alt"
                 .!= 0
 
-parseCommandLine :: IO (NodeFilePaths, NodeCredentials, ForgeOptions)
-parseCommandLine =
-    Opt.customExecParser p opts
-  where
-    p     = Opt.prefs Opt.showHelpOnEmpty
-    opts  = Opt.info CONF.parserCommandLine mempty

@@ -6,13 +6,15 @@
 -- | This tool aims to synthesize a valid ChainDB that can be used during node / cluster startup.
 module Main (main) where
 
+import           DBSynthesizer.Parsers
 
-import           Cardano.Node.Protocol
-import           Configuration
-import           Forging
+import           Cardano.Tools.DBSynthesizer.Forging
+import           Cardano.Tools.DBSynthesizer.Orphans ()
+import           Cardano.Tools.DBSynthesizer.Types
 
 import           Cardano.Api.Any (displayError)
 import           Cardano.Api.Protocol.Types (protocolInfo)
+import           Cardano.Node.Protocol
 import           Cardano.Node.Types
 
 import           Ouroboros.Consensus.Shelley.Eras (StandardShelley)
