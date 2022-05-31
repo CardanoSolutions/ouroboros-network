@@ -18,7 +18,7 @@ packages: ./ouroboros-network-testing
           ./ouroboros-consensus-shelley
           ./ouroboros-consensus-shelley-test
           ./ouroboros-consensus-test
-          ./ouroboros-consensus-cardano-tools/db-synthesizer
+          ./ouroboros-consensus-cardano-tools
           ./ntp-client
           ./cardano-client
 
@@ -81,9 +81,6 @@ package ouroboros-consensus-cardano
 
 package ouroboros-consensus-cardano-test
   tests: True
-
--- package ouroboros-consensus-cardano-db-synthesizer
---  tests: True
 
 
 package cardano-binary
