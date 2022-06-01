@@ -21,10 +21,12 @@ import           Block.Alonzo (Args (..))
 import           Block.Byron (Args (..), openGenesisByron)
 import           Block.Shelley (Args (..))
 import qualified Cardano.Chain.Genesis as Byron.Genesis
+import qualified Cardano.Crypto.Hash.Class
 import qualified Cardano.Chain.Update as Byron.Update
 import qualified Cardano.Ledger.Alonzo.Genesis as SL (AlonzoGenesis)
 import           Cardano.Ledger.Crypto
 import qualified Data.Aeson as Aeson
+import qualified Data.ByteString as BS
 import qualified Data.Map.Strict as Map
 import           Data.Maybe (fromJust)
 import           Data.SOP.Strict
@@ -116,6 +118,14 @@ instance HasProtocolInfo (CardanoBlock StandardCrypto) where
       Aeson.eitherDecodeFileStrict' configFileShelley
     genesisAlonzo <- either (error . show) return =<<
       Aeson.eitherDecodeFileStrict' configFileAlonzo
+
+    pure () `asTypeOf` (do
+      content <- BS.readFile configFileShelley
+      let shelleyGenesisHash = Nonce $ Cardano.Crypto.Hash.Class.castHash $ Cardano.Crypto.Hash.Class.hashWith id content
+
+      _ <- error (show shelleyGenesisHash)
+      pure ())
+
     return $ mkCardanoProtocolInfo genesisByron threshold genesisShelley genesisAlonzo initialNonce
 
 instance (HasAnnTip (CardanoBlock StandardCrypto), GetPrevHash (CardanoBlock StandardCrypto)) => HasAnalysis (CardanoBlock StandardCrypto) where
