@@ -189,23 +189,23 @@ mkCardanoProtocolInfo genesisByron signatureThreshold genesisShelley genesisAlon
         }
       ProtocolTransitionParamsShelleyBased {
           transitionTranslationContext = ()
-        , transitionTrigger            = TriggerHardForkAtVersion 2
+        , transitionTrigger            = TriggerHardForkAtEpoch 0 `asTypeOf` TriggerHardForkAtVersion 2
         }
       ProtocolTransitionParamsShelleyBased {
           transitionTranslationContext = ()
-        , transitionTrigger            = TriggerHardForkAtVersion 3
+        , transitionTrigger            = TriggerHardForkAtEpoch 0 `asTypeOf` TriggerHardForkAtVersion 3
         }
       ProtocolTransitionParamsShelleyBased {
           transitionTranslationContext = ()
-        , transitionTrigger            = TriggerHardForkAtVersion 4
+        , transitionTrigger            = TriggerHardForkAtEpoch 0 `asTypeOf` TriggerHardForkAtVersion 4
         }
       ProtocolTransitionParamsShelleyBased {
           transitionTranslationContext = genesisAlonzo
-        , transitionTrigger            = TriggerHardForkAtVersion 5
+        , transitionTrigger            = TriggerHardForkAtEpoch 0 `asTypeOf` TriggerHardForkAtVersion 5
         }
       ProtocolTransitionParamsShelleyBased {
           transitionTranslationContext = genesisAlonzo
-        , transitionTrigger            = TriggerHardForkAtVersion 6
+        , transitionTrigger            = TriggerHardForkAtVersion 7
         }
 
 castHeaderHash ::
