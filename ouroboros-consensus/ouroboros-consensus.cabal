@@ -357,3 +357,60 @@ library
   if flag(asserts)
     ghc-options:       -fno-ignore-asserts
     cpp-options:       -DENABLE_ASSERTIONS
+
+executable utxo-hd-experiment
+  hs-source-dirs:      utxo-hd-experiment
+  main-is:             Main.hs
+  default-language:    Haskell2010
+  other-extensions:
+                       BangPatterns
+                       ConstraintKinds
+                       DataKinds
+                       DeriveAnyClass
+                       DeriveFunctor
+                       DeriveGeneric
+                       EmptyDataDecls
+                       FlexibleContexts
+                       FlexibleInstances
+                       FunctionalDependencies
+                       GADTs
+                       GeneralizedNewtypeDeriving
+                       KindSignatures
+                       LambdaCase
+                       MultiParamTypeClasses
+                       NamedFieldPuns
+                       OverloadedStrings
+                       PackageImports
+                       PolyKinds
+                       RankNTypes
+                       RecordWildCards
+                       ScopedTypeVariables
+                       StandaloneDeriving
+                       TemplateHaskell
+                       TupleSections
+                       TypeApplications
+                       TypeFamilies
+                       TypeFamilyDependencies
+                       TypeInType
+                       TypeOperators
+                       UndecidableInstances
+                       UndecidableSuperClasses
+                       ViewPatterns
+
+  build-depends:       base              >=4.9 && <4.15
+                     , directory
+                     , lmdb-simple       >=0.4.0.0 && <0.5
+                     , lmdb              >= 0.2.5
+
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Wincomplete-uni-patterns
+                       -Wincomplete-record-updates
+                       -Wpartial-fields
+                       -Widentities
+                       -Wredundant-constraints
+                       -Wmissing-export-lists
+                       -Wno-unticked-promoted-constructors
+                       -threaded
+                       -fprof-auto
+                       "-with-rtsopts=-N -p -s -hc"
