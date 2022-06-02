@@ -88,23 +88,18 @@ jobs jobPool st =
       return (completion st)
 
 
--- | Activation delay after a peer was asynchronously demoted to warm state.
---
-activateDelay :: DiffTime
-activateDelay = 60
---TODO: make this a policy param
-
-
 -- | Monitor connections.
 --
 connections :: forall m peeraddr peerconn.
                (MonadSTM m, Ord peeraddr)
             => PeerSelectionActions peeraddr peerconn m
+            -> PeerSelectionPolicy peeraddr m
             -> PeerSelectionState peeraddr peerconn
             -> Guarded (STM m) (TimedDecision m peeraddr peerconn)
 connections PeerSelectionActions{
               peerStateActions = PeerStateActions {monitorPeerConnection}
             }
+            PeerSelectionPolicy { policyActivateDelay }
             st@PeerSelectionState {
               activePeers,
               establishedPeers,
@@ -130,7 +125,7 @@ connections PeerSelectionActions{
             -- handled elsewhere. We just update the async ones:
             establishedPeers'  = EstablishedPeers.setActivateTime
                                   (Map.keysSet demotedToWarm)
-                                  ((realToFrac aFuzz + activateDelay)
+                                  ((realToFrac aFuzz + policyActivateDelay)
                                    `addTime` now)
                                . EstablishedPeers.deletePeers
                                   (Map.keysSet demotedToCold)

@@ -66,7 +66,8 @@ simplePeerSelectionPolicy rngVar getChurnMode metrics errorDelay = PeerSelection
       policyGossipBatchWaitTime     = 3,    -- seconds
       policyGossipOverallTimeout    = 10,   -- seconds
 
-      policyErrorDelay              = ExitPolicy.reconnectDelay errorDelay
+      policyErrorDelay              = ExitPolicy.reconnectDelay errorDelay,
+      policyActivateDelay           = 60
     }
   where
 

@@ -102,7 +102,11 @@ data PeerSelectionPolicy peeraddr m = PeerSelectionPolicy {
 
        -- | Reconnection delay, passed from `ExitPolicy`.
        --
-       policyErrorDelay              :: !DiffTime
+       policyErrorDelay              :: !DiffTime,
+       -- | Activation delay after a peer was asynchronously demoted to warm
+       -- state.
+       --
+       policyActivateDelay           :: !DiffTime
      }
 
 
