@@ -95,6 +95,7 @@ import qualified Ouroboros.Consensus.Network.NodeToNode as NTN
 import           Ouroboros.Consensus.Node.DbLock
 import           Ouroboros.Consensus.Node.DbMarker
 import           Ouroboros.Consensus.Node.ErrorPolicy
+import           Ouroboros.Consensus.Node.ExitPolicy
 import           Ouroboros.Consensus.Node.InitStorage
 import           Ouroboros.Consensus.Node.NetworkProtocolVersion
 import           Ouroboros.Consensus.Node.ProtocolInfo
@@ -226,8 +227,8 @@ data LowLevelRunNodeArgs m addrNTN addrNTC versionDataNTN versionDataNTC blk
         -> Diffusion.Applications
              addrNTN NodeToNodeVersion   versionDataNTN
              addrNTC NodeToClientVersion versionDataNTC
-             m ()
-        -> Diffusion.ExtraApplications p2p addrNTN m
+             m NodeToNodeClientResult
+        -> Diffusion.ExtraApplications p2p addrNTN m NodeToNodeClientResult
         -> m ()
 
     , llrnVersionDataNTC :: versionDataNTC
@@ -379,6 +380,7 @@ runWith RunNodeArgs{..} LowLevelRunNodeArgs{..} =
           ByteString
           ByteString
           ByteString
+          NodeToNodeClientResult
           ()
     mkNodeToNodeApps nodeKernelArgs nodeKernel peerMetrics version =
         NTN.mkApps
@@ -414,6 +416,7 @@ runWith RunNodeArgs{..} LowLevelRunNodeArgs{..} =
                ByteString
                ByteString
                ByteString
+               NodeToNodeClientResult
                ()
         )
       -> (   BlockNodeToClientVersion blk
@@ -426,8 +429,8 @@ runWith RunNodeArgs{..} LowLevelRunNodeArgs{..} =
       -> ( Diffusion.Applications
              addrNTN NodeToNodeVersion   versionDataNTN
              addrNTC NodeToClientVersion versionDataNTC
-             m ()
-         , Diffusion.ExtraApplications p2p addrNTN m
+             m NodeToNodeClientResult
+         , Diffusion.ExtraApplications p2p addrNTN m NodeToNodeClientResult
          )
     mkDiffusionApplications
       enP2P
@@ -442,6 +445,7 @@ runWith RunNodeArgs{..} LowLevelRunNodeArgs{..} =
           , Diffusion.P2PApplications
               P2P.ApplicationsExtra {
                 P2P.daRethrowPolicy          = consensusRethrowPolicy (Proxy @blk),
+                P2P.daReturnPolicy           = returnPolicy,
                 P2P.daLocalRethrowPolicy     = localRethrowPolicy,
                 P2P.daPeerMetrics            = peerMetrics,
                 P2P.daBlockFetchMode         = getFetchMode kernel
@@ -699,8 +703,8 @@ stdRunDataDiffusion ::
   -> Diffusion.Applications
        RemoteAddress  NodeToNodeVersion   NodeToNodeVersionData
        LocalAddress   NodeToClientVersion NodeToClientVersionData
-       IO ()
-  -> Diffusion.ExtraApplications p2p RemoteAddress IO
+       IO NodeToNodeClientResult
+  -> Diffusion.ExtraApplications p2p RemoteAddress IO NodeToNodeClientResult
   -> IO ()
 stdRunDataDiffusion = Diffusion.run
 
