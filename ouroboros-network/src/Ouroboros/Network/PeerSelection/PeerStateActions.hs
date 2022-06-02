@@ -25,7 +25,7 @@ module Ouroboros.Network.PeerSelection.PeerStateActions
   ) where
 
 import           Control.Exception (SomeAsyncException (..))
-import           Control.Monad (when)
+import           Control.Monad (when, (<=<))
 import           Control.Monad.Class.MonadAsync
 import           Control.Monad.Class.MonadSTM.Strict
 import           Control.Monad.Class.MonadThrow
@@ -45,6 +45,7 @@ import qualified Network.Mux as Mux
 
 import           Ouroboros.Network.Channel (fromChannel)
 import           Ouroboros.Network.ConnectionId
+import           Ouroboros.Network.ExitPolicy
 import           Ouroboros.Network.Mux
 import           Ouroboros.Network.PeerSelection.Governor
                      (PeerStateActions (..))
@@ -403,7 +404,6 @@ data PeerState
   -- ^ 'DemotingToCold' also contains the initial state of the peer.
   deriving Eq
 
-
 -- | Return the current state of the peer, as it should be viewed by the
 -- governor.
 --
@@ -516,7 +516,9 @@ data PeerStateActionsArguments muxMode socket peerAddr versionNumber m a b =
       --
       spsCloseConnectionTimeout :: DiffTime,
 
-      spsConnectionManager      :: MuxConnectionManager muxMode socket peerAddr versionNumber ByteString m a b
+      spsConnectionManager      :: MuxConnectionManager muxMode socket peerAddr versionNumber ByteString m a b,
+
+      spsExitPolicy             :: ExitPolicy a
     }
 
 
@@ -547,7 +549,8 @@ withPeerStateActions PeerStateActionsArguments {
                        spsDeactivateTimeout,
                        spsCloseConnectionTimeout,
                        spsTracer,
-                       spsConnectionManager
+                       spsConnectionManager,
+                       spsExitPolicy
                      }
                      k = do
     JobPool.withJobPool $ \jobPool ->
@@ -759,9 +762,24 @@ withPeerStateActions PeerStateActionsArguments {
 
     -- 'monitorPeerConnection' is only used against established connections
     monitorPeerConnection :: PeerConnectionHandle muxMode peerAddr ByteString m a b
-                          -> STM m PeerStatus
-    monitorPeerConnection PeerConnectionHandle { pchPeerState } =
-      getCurrentState <$> readTVar pchPeerState
+                          -> STM m (PeerStatus, ReconnectDelay)
+    monitorPeerConnection PeerConnectionHandle { pchPeerState, pchAppHandles } =
+        (,) <$> (getCurrentState <$> readTVar pchPeerState)
+            <*> (g <$> traverse f pchAppHandles)
+      where
+        f :: ApplicationHandle muxMode ByteString m a b
+          -> STM m (Map MiniProtocolNum (HasReturned a))
+        f = sequence <=< readTVar . ahMiniProtocolResults
+
+        g :: Bundle (Map MiniProtocolNum (HasReturned a)) -> ReconnectDelay
+        g = foldMap (foldMap h)
+
+        h :: HasReturned a -> ReconnectDelay
+        h (Returned a) = epReturnDelay spsExitPolicy a
+        -- Note: we do 'RethrowPolicy' in 'ConnectionHandler' (see
+        -- 'makeConnectionHandler').
+        h Errored {}   = ReconnectDelay 10
+        h NotRunning   = mempty
 
 
     -- Take a warm peer and promote it to a hot one.

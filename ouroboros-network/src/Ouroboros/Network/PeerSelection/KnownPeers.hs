@@ -28,6 +28,7 @@ module Ouroboros.Network.PeerSelection.KnownPeers
     -- ** Tracking when we can (re)connect
   , minConnectTime
   , setConnectTime
+  , setConnectTimes
   , availableToConnect
   ) where
 
@@ -428,6 +429,30 @@ setConnectTime peeraddrs time
                         peeraddrs
         }
     in assert (invariant knownPeers') knownPeers'
+
+
+setConnectTimes :: Ord peeraddr
+                => Map peeraddr Time
+                -> KnownPeers peeraddr
+                -> KnownPeers peeraddr
+setConnectTimes times knownPeers@KnownPeers {
+                        allPeers,
+                        nextConnectTimes
+                     } =
+    assert (all (`Map.member` allPeers) (Map.keysSet times)) $
+    let knownPeers' = knownPeers {
+            nextConnectTimes =
+              Map.foldlWithKey'
+                (\psq peeraddr time ->
+                      snd $
+                      PSQ.alter (\a -> case a of
+                                         Nothing         -> ((), Just (time, ()))
+                                         Just (time', _) -> ((), Just (time `max` time', ())))
+                                 peeraddr psq)
+                nextConnectTimes
+                times
+          }
+    in knownPeers'
 
 
 ---------------------------------

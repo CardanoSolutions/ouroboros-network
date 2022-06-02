@@ -82,6 +82,7 @@ import           Ouroboros.Network.ConnectionManager.Core
 import           Ouroboros.Network.ConnectionManager.Types
 import           Ouroboros.Network.Diffusion.Common hiding (nullTracers)
 import qualified Ouroboros.Network.Diffusion.Policies as Diffusion.Policies
+import           Ouroboros.Network.ExitPolicy
 import           Ouroboros.Network.IOManager
 import           Ouroboros.Network.InboundGovernor (InboundGovernorTrace (..),
                      RemoteTransitionTrace)
@@ -265,11 +266,15 @@ socketAddressType addr                    =
 -- TODO: we need initiator only mode for Deadalus, there's no reason why it
 -- should run a node-to-node server side.
 --
-data ApplicationsExtra ntnAddr m =
+data ApplicationsExtra ntnAddr m a =
     ApplicationsExtra {
     -- | /node-to-node/ rethrow policy
     --
       daRethrowPolicy      :: RethrowPolicy
+
+    -- | /node-to-node/ return policy
+    --
+    , daReturnPolicy       :: ReturnPolicy a
 
     -- | /node-to-client/ rethrow policy
     --
@@ -556,7 +561,7 @@ runM
                     ntcAddr ntcVersion ntcVersionData
                     m a
     -> -- | p2p protocol handlers
-       ApplicationsExtra ntnAddr m
+       ApplicationsExtra ntnAddr m a
     -> m Void
 runM Interfaces
        { diNtnSnocket
@@ -619,6 +624,7 @@ runM Interfaces
      ApplicationsExtra
        { daRethrowPolicy
        , daLocalRethrowPolicy
+       , daReturnPolicy
        , daPeerMetrics
        , daBlockFetchMode
        }
@@ -849,7 +855,8 @@ runM Interfaces
                         spsDeactivateTimeout = Diffusion.Policies.deactivateTimeout,
                         spsCloseConnectionTimeout =
                           Diffusion.Policies.closeConnectionTimeout,
-                        spsConnectionManager = connectionManager
+                        spsConnectionManager = connectionManager,
+                        spsExitPolicy = stdExitPolicy daReturnPolicy
                       }
                     $ \(peerStateActions
                           :: NodeToNodePeerStateActions InitiatorMode ntnAddr m a Void) ->
@@ -970,7 +977,8 @@ runM Interfaces
                         spsDeactivateTimeout = Diffusion.Policies.deactivateTimeout,
                         spsCloseConnectionTimeout =
                           Diffusion.Policies.closeConnectionTimeout,
-                        spsConnectionManager = connectionManager
+                        spsConnectionManager = connectionManager,
+                        spsExitPolicy = stdExitPolicy daReturnPolicy
                       }
                     $ \(peerStateActions
                           :: NodeToNodePeerStateActions
@@ -1098,7 +1106,7 @@ run
          RemoteAddress NodeToNodeVersion   NodeToNodeVersionData
          LocalAddress  NodeToClientVersion NodeToClientVersionData
          IO a
-    -> ApplicationsExtra RemoteAddress IO
+    -> ApplicationsExtra RemoteAddress IO a
     -> IO Void
 run tracers tracersExtra args argsExtra apps appsExtra = do
     -- We run two services: for /node-to-node/ and /node-to-client/.  The
