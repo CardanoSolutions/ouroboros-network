@@ -541,7 +541,7 @@ peerSelectionGovernorLoop tracer
          Monitor.connections          actions st
       <> Monitor.jobs                 jobPool st
       <> Monitor.targetPeers          actions st
-      <> Monitor.localRoots           actions st
+      <> Monitor.localRoots           actions policy st
 
       -- All the alternative non-blocking internal decisions.
       <> RootPeers.belowTarget        actions blockedAt  st
